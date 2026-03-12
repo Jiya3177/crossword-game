@@ -72,12 +72,6 @@ crossword-game
 ├── 2.sql        # Database queries / schema
 └── screenshots  # Project screenshots
 
-📷 Screenshots
-
-(Add your images here)
-
-![Home](screenshots/home.png)
-![Puzzle](screenshots/puzzle.png)
 
 🚀 Future Improvements
 
