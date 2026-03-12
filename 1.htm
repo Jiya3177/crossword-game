@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBMS Crossword Puzzle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .crossword-section {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .clues-section {
+            flex: 0 0 350px;
+            min-width: 300px;
+        }
+
+        .grid {
+            display: inline-grid;
+            grid-template-columns: repeat(10, 40px);
+            grid-template-rows: repeat(10, 40px);
+            gap: 2px;
+            background: #ccc;
+            padding: 2px;
+            border: 3px solid #667eea;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .cell:hover:not(.black) {
+            background: #e8eaf6;
+        }
+
+        .cell.black {
+            background: #333;
+            cursor: default;
+        }
+
+        .cell.active {
+            background: #ffeb3b;
+            border: 2px solid #667eea;
+        }
+
+        .cell.correct {
+            background: #c8e6c9;
+        }
+
+        .cell.incorrect {
+            background: #ffcdd2;
+        }
+
+        .cell-number {
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            font-size: 10px;
+            color: #666;
+            font-weight: normal;
+        }
+
+        input.cell-input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            background: transparent;
+            outline: none;
+        }
+
+        .clues {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .clue-section {
+            margin-bottom: 20px;
+        }
+
+        .clue-section h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .clue {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .clue:hover {
+            background: #e8eaf6;
+            border-left-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .clue.active {
+            background: #ffeb3b;
+            border-left-color: #fbc02d;
+        }
+
+        .clue-number {
+            font-weight: bold;
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+        }
+
+        .btn-secondary {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+
+        .message.success {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .message.error {
+            background: #ffcdd2;
+            color: #c62828;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .grid {
+                grid-template-columns: repeat(10, 35px);
+                grid-template-rows: repeat(10, 35px);
+            }
+            
+            .cell {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 DBMS Crossword Puzzle</h1>
+        <p class="subtitle">Test your Database Management System knowledge!</p>
+        
+        <div class="game-container">
+            <div class="crossword-section">
+                <div id="grid" class="grid"></div>
+                
+                <div class="controls">
+                    <button class="btn-primary" onclick="checkAnswers()">Check Answers</button>
+                    <button class="btn-secondary" onclick="revealAnswer()">Reveal Current</button>
+                    <button class="btn-danger" onclick="resetGame()">Reset Puzzle</button>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="correctCount">0</div>
+                        <div class="stat-label">Correct</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalCount">0</div>
+                        <div class="stat-label">Total Words</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="progressPercent">0%</div>
+                        <div class="stat-label">Progress</div>
+                    </div>
+                </div>
+                
+                <div id="message" class="message"></div>
+            </div>
+            
+            <div class="clues-section">
+                <div class="clues">
+                    <div class="clue-section">
+                        <h3>📝 Across</h3>
+                        <div id="acrossClues"></div>
+                    </div>
+                    
+                    <div class="clue-section">
+                        <h3>📝 Down</h3>
+                        <div id="downClues"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Crossword data structure
+        const crosswordData = {
+            grid: [
+                ['T', 'A', 'B', 'L', 'E', '', '', '', '', ''],
+                ['R', '', '', '', 'N', '', 'Q', 'U', 'E', 'R', 'Y'],
+                ['A', '', 'N', 'O', 'R', 'M', 'A', 'L', 'I', 'Z', 'E'],
+                ['N', '', 'D', '', 'I', '', '', '', 'N', '', ''],
+                ['S', 'Q', 'L', '', 'T', '', '', '', 'D', '', ''],
+                ['A', '', 'E', '', 'Y', '', 'V', 'I', 'E', 'W', ''],
+                ['C', '', 'X', '', '', '', '', '', 'X', '', ''],
+                ['T', 'R', 'I', 'G', 'G', 'E', 'R', '', '', '', ''],
+                ['I', '', '', '', '', '', '', '', 'T', 'U', 'P', 'L', 'E'],
+                ['O', '', '', 'P', 'R', 'I', 'M', 'A', 'R', 'Y', ''],
+                ['N', '', '', '', '', '', '', '', '', '', '']
+            ],
+            
+            words: [
+                {
+                    word: 'TABLE',
+                    number: 1,
+                    row: 0,
+                    col: 0,
+                    direction: 'across',
+                    clue: 'Basic structure that stores data in rows and columns'
+                },
+                {
+                    word: 'TRANSACTION',
+                    number: 1,
+                    row: 0,
+                    col: 0,
+                    direction: 'down',
+                    clue: 'A unit of work performed against a database (ACID properties)'
+                },
+                {
+                    word: 'ENTITY',
+                    number: 2,
+                    row: 0,
+                    col: 4,
+                    direction: 'down',
+                    clue: 'Real-world object or concept in ER model'
+                },
+                {
+                    word: 'QUERY',
+                    number: 3,
+                    row: 1,
+                    col: 6,
+                    direction: 'across',
+                    clue: 'Request for data or information from a database'
+                },
+                {
+                    word: 'NORMALIZE',
+                    number: 4,
+                    row: 2,
+                    col: 2,
+                    direction: 'across',
+                    clue: 'Process of organizing data to reduce redundancy'
+                },
+                {
+                    word: 'INDEX',
+                    number: 5,
+                    row: 2,
+                    col: 8,
+                    direction: 'down',
+                    clue: 'Data structure that improves speed of data retrieval'
+                },
+                {
+                    word: 'SQL',
+                    number: 6,
+                    row: 4,
+                    col: 0,
+                    direction: 'across',
+                    clue: 'Standard language for relational database management'
+                },
+                {
+                    word: 'VIEW',
+                    number: 7,
+                    row: 5,
+                    col: 6,
+                    direction: 'across',
+                    clue: 'Virtual table based on result-set of an SQL statement'
+                },
+                {
+                    word: 'TRIGGER',
+                    number: 8,
+                    row: 7,
+                    col: 0,
+                    direction: 'across',
+                    clue: 'Stored procedure that automatically executes when an event occurs'
+                },
+                {
+                    word: 'TUPLE',
+                    number: 9,
+                    row: 8,
+                    col: 8,
+                    direction: 'across',
+                    clue: 'A single row in a relational database table'
+                },
+                {
+                    word: 'PRIMARY',
+                    number: 10,
+                    row: 9,
+                    col: 3,
+                    direction: 'across',
+                    clue: 'Type of key that uniquely identifies each record'
+                }
+            ]
+        };
+
+        let currentWord = null;
+        let currentDirection = 'across';
+        let userAnswers = {};
+
+        // Initialize the game
+        function initGame() {
+            createGrid();
+            displayClues();
+            updateStats();
+        }
+
+        // Create the crossword grid
+        function createGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            const rows = 11;
+            const cols = 13;
+            
+            grid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+            grid.style.gridTemplateRows = `repeat(${rows}, 40px)`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    const letter = getCellLetter(r, c);
+                    
+                    if (letter === '') {
+                        cell.classList.add('black');
+                    } else {
+                        const input = document.createElement('input');
+                        input.className = 'cell-input';
+                        input.maxLength = 1;
+                        input.dataset.answer = letter;
+                        
+                        input.addEventListener('input', handleInput);
+                        input.addEventListener('click', () => selectCell(r, c));
+                        input.addEventListener('keydown', handleKeyDown);
+                        
+                        const wordNum = getWordNumber(r, c);
+                        if (wordNum) {
+                            const numSpan = document.createElement('span');
+                            numSpan.className = 'cell-number';
+                            numSpan.textContent = wordNum;
+                            cell.appendChild(numSpan);
+                        }
+                        
+                        cell.appendChild(input);
+                        userAnswers[`${r}-${c}`] = '';
+                    }
+                    
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        // Get letter at specific position
+        function getCellLetter(row, col) {
+            for (const word of crosswordData.words) {
+                if (word.direction === 'across') {
+                    if (row === word.row && col >= word.col && col < word.col + word.word.length) {
+                        return word.word[col - word.col];
+                    }
+                } else {
+                    if (col === word.col && row >= word.row && row < word.row + word.word.length) {
+                        return word.word[row - word.row];
+                    }
+                }
+            }
+            return '';
+        }
+
+        // Get word number for a cell
+        function getWordNumber(row, col) {
+            for (const word of crosswordData.words) {
+                if (word.row === row && word.col === col) {
+                    return word.number;
+                }
+            }
+            return null;
+        }
+
+        // Display clues
+        function displayClues() {
+            const acrossDiv = document.getElementById('acrossClues');
+            const downDiv = document.getElementById('downClues');
+            
+            acrossDiv.innerHTML = '';
+            downDiv.innerHTML = '';
+            
+            crosswordData.words.forEach(word => {
+                const clueDiv = document.createElement('div');
+                clueDiv.className = 'clue';
+                clueDiv.innerHTML = `<span class="clue-number">${word.number}.</span>${word.clue}`;
+                clueDiv.onclick = () => selectWord(word);
+                
+                if (word.direction === 'across') {
+                    acrossDiv.appendChild(clueDiv);
+                } else {
+                    downDiv.appendChild(clueDiv);
+                }
+            });
+            
+            document.getElementById('totalCount').textContent = crosswordData.words.length;
+        }
+
+        // Handle input
+        function handleInput(e) {
+            const input = e.target;
+            const row = parseInt(input.parentElement.dataset.row);
+            const col = parseInt(input.parentElement.dataset.col);
+            
+            userAnswers[`${row}-${col}`] = input.value.toUpperCase();
+            
+            if (input.value) {
+                moveToNext(row, col);
+            }
+        }
+
+        // Handle keyboard navigation
+        function handleKeyDown(e) {
+            const input = e.target;
+            const row = parseInt(input.parentElement.dataset.row);
+            const col = parseInt(input.parentElement.dataset.col);
+            
+            if (e.key === 'Backspace' && !input.value) {
+                moveToPrevious(row, col);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                moveRight(row, col);
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                moveLeft(row, col);
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                moveDown(row, col);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveUp(row, col);
+            }
+        }
+
+        // Navigation functions
+        function moveToNext(row, col) {
+            if (currentDirection === 'across') {
+                moveRight(row, col);
+            } else {
+                moveDown(row, col);
+            }
+        }
+
+        function moveToPrevious(row, col) {
+            if (currentDirection === 'across') {
+                moveLeft(row, col);
+            } else {
+                moveUp(row, col);
+            }
+        }
+
+        function moveRight(row, col) {
+            const nextCell = document.querySelector(`.cell[data-row="${row}"][data-col="${col + 1}"] input`);
+            if (nextCell) nextCell.focus();
+        }
+
+        function moveLeft(row, col) {
+            const prevCell = document.querySelector(`.cell[data-row="${row}"][data-col="${col - 1}"] input`);
+            if (prevCell) prevCell.focus();
+        }
+
+        function moveDown(row, col) {
+            const nextCell = document.querySelector(`.cell[data-row="${row + 1}"][data-col="${col}"] input`);
+            if (nextCell) nextCell.focus();
+        }
+
+        function moveUp(row, col) {
+            const prevCell = document.querySelector(`.cell[data-row="${row - 1}"][data-col="${col}"] input`);
+            if (prevCell) prevCell.focus();
+        }
+
+        // Select cell
+        function selectCell(row, col) {
+            document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.clue').forEach(c => c.classList.remove('active'));
+            
+            const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+            cell.classList.add('active');
+        }
+
+        // Select word
+        function selectWord(word) {
+            currentWord = word;
+            currentDirection = word.direction;
+            
+            document.querySelectorAll('.clue').forEach(c => c.classList.remove('active'));
+            event.target.closest('.clue').classList.add('active');
+            
+            const firstInput = document.querySelector(
+                `.cell[data-row="${word.row}"][data-col="${word.col}"] input`
+            );
+            if (firstInput) firstInput.focus();
+        }
+
+        // Check answers
+        function checkAnswers() {
+            let correct = 0;
+            const inputs = document.querySelectorAll('.cell-input');
+            
+            inputs.forEach(input => {
+                const userAnswer = input.value.toUpperCase();
+                const correctAnswer = input.dataset.answer;
+                
+                input.parentElement.classList.remove('correct', 'incorrect');
+                
+                if (userAnswer === correctAnswer) {
+                    input.parentElement.classList.add('correct');
+                    correct++;
+                } else if (userAnswer) {
+                    input.parentElement.classList.add('incorrect');
+                }
+            });
+            
+            updateStats();
+            showMessage(
+                correct === inputs.length ? 
+                '🎉 Congratulations! All answers are correct!' : 
+                `You have ${correct} out of ${inputs.length} correct answers!`,
+                correct === inputs.length ? 'success' : 'error'
+            );
+        }
+
+        // Reveal current answer
+        function revealAnswer() {
+            if (currentWord) {
+                for (let i = 0; i < currentWord.word.length; i++) {
+                    const row = currentWord.direction === 'across' ? 
+                        currentWord.row : currentWord.row + i;
+                    const col = currentWord.direction === 'across' ? 
+                        currentWord.col + i : currentWord.col;
+                    
+                    const input = document.querySelector(
+                        `.cell[data-row="${row}"][data-col="${col}"] input`
+                    );
+                    
+                    if (input) {
+                        input.value = currentWord.word[i];
+                        userAnswers[`${row}-${col}`] = currentWord.word[i];
+                    }
+                }
+                showMessage('Current word revealed!', 'success');
+            } else {
+                showMessage('Please select a word first!', 'error');
+            }
+        }
+
+        // Reset game
+        function resetGame() {
+            const inputs = document.querySelectorAll('.cell-input');
+            inputs.forEach(input => {
+                input.value = '';
+                input.parentElement.classList.remove('correct', 'incorrect', 'active');
+            });
+            
+            userAnswers = {};
+            currentWord = null;
+            updateStats();
+            showMessage('Puzzle reset!', 'success');
+        }
+
+        // Update statistics
+        function updateStats() {
+            const inputs = document.querySelectorAll('.cell-input');
+            let correct = 0;
+            
+            inputs.forEach(input => {
+                if (input.value.toUpperCase() === input.dataset.answer) {
+                    correct++;
+                }
+            });
+            
+            document.getElementById('correctCount').textContent = correct;
+            const percent = Math.round((correct / inputs.length) * 100);
+            document.getElementById('progressPercent').textContent = percent + '%';
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = text;
+            msgDiv.className = `message ${type}`;
+            msgDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                msgDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize on load
+        initGame();
+    </script>
+</body>
+</html>
