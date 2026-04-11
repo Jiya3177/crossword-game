@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DBMS Crossword Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #333;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 460px;
+            background: white;
+            border-radius: 15px;
+            padding: 32px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+
+        p {
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 16px;
+            outline: none;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .message {
+            margin-top: 16px;
+            min-height: 24px;
+            font-size: 14px;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h1>DBMS Crossword</h1>
+        <p>Enter any username you want, then start the crossword puzzle and save your score in the database.</p>
+        <input type="text" id="username" placeholder="Enter your username" maxlength="30">
+        <button onclick="loginUser()">Start Game</button>
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        const apiBase = window.location.origin;
+
+        async function loginUser() {
+            const usernameInput = document.getElementById('username');
+            const messageDiv = document.getElementById('message');
+            const username = usernameInput.value.trim();
+
+            if (!username) {
+                messageDiv.textContent = 'Please enter a username.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiBase}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+
+                localStorage.setItem('crosswordUser', data.username);
+                window.location.href = `/game?username=${encodeURIComponent(data.username)}`;
+            } catch (error) {
+                messageDiv.textContent = error.message;
+            }
+        }
+
+        document.getElementById('username').addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                loginUser();
+            }
+        });
+
+        const savedUser = localStorage.getItem('crosswordUser');
+        if (savedUser) {
+            document.getElementById('username').value = savedUser;
+        }
+    </script>
+</body>
+</html>

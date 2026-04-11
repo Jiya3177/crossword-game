@@ -43,6 +43,29 @@
             font-size: 1.1em;
         }
 
+        .player-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            padding: 14px 18px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .player-name {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .small-btn {
+            padding: 10px 16px;
+            font-size: 14px;
+            box-shadow: none;
+        }
+
         .game-container {
             display: flex;
             gap: 30px;
@@ -134,7 +157,8 @@
             background: #f5f5f5;
             padding: 20px;
             border-radius: 8px;
-            max-height: 500px;
+            margin-bottom: 20px;
+            max-height: 380px;
             overflow-y: auto;
         }
 
@@ -268,6 +292,52 @@
             color: #c62828;
         }
 
+        .leaderboard {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+
+        .leaderboard h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .leaderboard-item {
+            background: white;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .leaderboard-rank {
+            font-weight: bold;
+            color: #667eea;
+            width: 28px;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+            font-weight: bold;
+        }
+
+        .leaderboard-score {
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .leaderboard-meta {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+
         @media (max-width: 768px) {
             .game-container {
                 flex-direction: column;
@@ -290,6 +360,10 @@
     <div class="container">
         <h1>🎯 DBMS Crossword Puzzle</h1>
         <p class="subtitle">Test your Database Management System knowledge!</p>
+        <div class="player-bar">
+            <div>Playing as: <span id="playerName" class="player-name">Guest</span></div>
+            <button class="btn-danger small-btn" onclick="logoutUser()">Logout</button>
+        </div>
         
         <div class="game-container">
             <div class="crossword-section">
@@ -297,6 +371,7 @@
                 
                 <div class="controls">
                     <button class="btn-primary" onclick="checkAnswers()">Check Answers</button>
+                    <button class="btn-secondary" onclick="submitAttempt()">Submit Attempt</button>
                     <button class="btn-secondary" onclick="revealAnswer()">Reveal Current</button>
                     <button class="btn-danger" onclick="resetGame()">Reset Puzzle</button>
                 </div>
@@ -330,6 +405,11 @@
                         <h3>📝 Down</h3>
                         <div id="downClues"></div>
                     </div>
+                </div>
+
+                <div class="leaderboard">
+                    <h3>🏆 Leaderboard</h3>
+                    <div id="leaderboardList">No scores yet.</div>
                 </div>
             </div>
         </div>
@@ -373,7 +453,7 @@
                     word: 'ENTITY',
                     number: 2,
                     row: 0,
-                    col: 4,
+                    col: 12,
                     direction: 'down',
                     clue: 'Real-world object or concept in ER model'
                 },
@@ -447,12 +527,19 @@
         let currentWord = null;
         let currentDirection = 'across';
         let userAnswers = {};
+        let currentUser = '';
+        let startTime = Date.now();
+        const apiBase = window.location.protocol.startsWith('http')
+            ? window.location.origin
+            : 'http://localhost:5001';
 
         // Initialize the game
         function initGame() {
+            ensureLoggedIn();
             createGrid();
             displayClues();
             updateStats();
+            loadLeaderboard();
         }
 
         // Create the crossword grid
@@ -542,7 +629,7 @@
                 const clueDiv = document.createElement('div');
                 clueDiv.className = 'clue';
                 clueDiv.innerHTML = `<span class="clue-number">${word.number}.</span>${word.clue}`;
-                clueDiv.onclick = () => selectWord(word);
+                clueDiv.onclick = () => selectWord(word, clueDiv);
                 
                 if (word.direction === 'across') {
                     acrossDiv.appendChild(clueDiv);
@@ -627,22 +714,60 @@
             if (prevCell) prevCell.focus();
         }
 
+        function getWordsAtCell(row, col) {
+            return crosswordData.words.filter(word => {
+                if (word.direction === 'across') {
+                    return row === word.row && col >= word.col && col < word.col + word.word.length;
+                }
+                return col === word.col && row >= word.row && row < word.row + word.word.length;
+            });
+        }
+
+        function highlightActiveClue() {
+            document.querySelectorAll('.clue').forEach(c => c.classList.remove('active'));
+            if (!currentWord) {
+                return;
+            }
+
+            const clueLists = currentWord.direction === 'across'
+                ? document.querySelectorAll('#acrossClues .clue')
+                : document.querySelectorAll('#downClues .clue');
+            const clueIndex = currentWord.direction === 'across'
+                ? crosswordData.words.filter(word => word.direction === 'across').findIndex(word => word.number === currentWord.number && word.word === currentWord.word)
+                : crosswordData.words.filter(word => word.direction === 'down').findIndex(word => word.number === currentWord.number && word.word === currentWord.word);
+
+            if (clueLists[clueIndex]) {
+                clueLists[clueIndex].classList.add('active');
+            }
+        }
+
         // Select cell
         function selectCell(row, col) {
             document.querySelectorAll('.cell').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.clue').forEach(c => c.classList.remove('active'));
             
             const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
             cell.classList.add('active');
+
+            const wordsAtCell = getWordsAtCell(row, col);
+            if (!wordsAtCell.length) {
+                return;
+            }
+
+            const preferredWord = wordsAtCell.find(word => word.direction === currentDirection) || wordsAtCell[0];
+            currentWord = preferredWord;
+            currentDirection = preferredWord.direction;
+            highlightActiveClue();
         }
 
         // Select word
-        function selectWord(word) {
+        function selectWord(word, clueDiv) {
             currentWord = word;
             currentDirection = word.direction;
             
             document.querySelectorAll('.clue').forEach(c => c.classList.remove('active'));
-            event.target.closest('.clue').classList.add('active');
+            if (clueDiv) {
+                clueDiv.classList.add('active');
+            }
             
             const firstInput = document.querySelector(
                 `.cell[data-row="${word.row}"][data-col="${word.col}"] input`
@@ -652,7 +777,7 @@
 
         // Check answers
         function checkAnswers() {
-            let correct = 0;
+            const progress = calculateProgress();
             const inputs = document.querySelectorAll('.cell-input');
             
             inputs.forEach(input => {
@@ -663,19 +788,21 @@
                 
                 if (userAnswer === correctAnswer) {
                     input.parentElement.classList.add('correct');
-                    correct++;
                 } else if (userAnswer) {
                     input.parentElement.classList.add('incorrect');
                 }
             });
             
             updateStats();
-            showMessage(
-                correct === inputs.length ? 
-                '🎉 Congratulations! All answers are correct!' : 
-                `You have ${correct} out of ${inputs.length} correct answers!`,
-                correct === inputs.length ? 'success' : 'error'
-            );
+
+            if (progress.correct === inputs.length) {
+                showMessage('🎉 Congratulations! All answers are correct!', 'success');
+            } else {
+                showMessage(
+                    `Current result: ${progress.correct} correct and ${progress.filled} filled out of ${inputs.length} cells.`,
+                    'error'
+                );
+            }
         }
 
         // Reveal current answer
@@ -712,24 +839,39 @@
             
             userAnswers = {};
             currentWord = null;
+            startTime = Date.now();
             updateStats();
             showMessage('Puzzle reset!', 'success');
         }
 
         // Update statistics
         function updateStats() {
+            const progress = calculateProgress();
+            document.getElementById('correctCount').textContent = progress.correct;
+            const percent = Math.round((progress.correct / progress.total) * 100);
+            document.getElementById('progressPercent').textContent = percent + '%';
+        }
+
+        function calculateProgress() {
             const inputs = document.querySelectorAll('.cell-input');
             let correct = 0;
-            
+            let filled = 0;
+
             inputs.forEach(input => {
-                if (input.value.toUpperCase() === input.dataset.answer) {
+                const value = input.value.toUpperCase();
+                if (value) {
+                    filled++;
+                }
+                if (value === input.dataset.answer) {
                     correct++;
                 }
             });
-            
-            document.getElementById('correctCount').textContent = correct;
-            const percent = Math.round((correct / inputs.length) * 100);
-            document.getElementById('progressPercent').textContent = percent + '%';
+
+            return {
+                correct,
+                filled,
+                total: inputs.length
+            };
         }
 
         // Show message
@@ -742,6 +884,103 @@
             setTimeout(() => {
                 msgDiv.style.display = 'none';
             }, 3000);
+        }
+
+        function ensureLoggedIn() {
+            const params = new URLSearchParams(window.location.search);
+            const usernameFromUrl = params.get('username');
+            const savedUser = localStorage.getItem('crosswordUser');
+
+            currentUser = usernameFromUrl || savedUser || '';
+            if (!currentUser) {
+                window.location.href = `${apiBase}/`;
+                return;
+            }
+
+            localStorage.setItem('crosswordUser', currentUser);
+            document.getElementById('playerName').textContent = currentUser;
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('crosswordUser');
+            window.location.href = `${apiBase}/`;
+        }
+
+        async function submitScore(score) {
+            if (!currentUser) {
+                showMessage('Please login first.', 'error');
+                return;
+            }
+
+            const progress = calculateProgress();
+            const timeTaken = Math.max(1, Math.floor((Date.now() - startTime) / 1000));
+
+            try {
+                const response = await fetch(`${apiBase}/submit_score`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: currentUser,
+                        score,
+                        answered_cells: progress.filled,
+                        total_cells: progress.total,
+                        time: timeTaken
+                    })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Could not save score');
+                }
+
+                loadLeaderboard();
+                showMessage(
+                    `Attempt saved: ${progress.correct} correct, ${progress.filled}/${progress.total} filled.`,
+                    'success'
+                );
+            } catch (error) {
+                showMessage(`Score save failed: ${error.message}`, 'error');
+            }
+        }
+
+        function submitAttempt() {
+            const progress = calculateProgress();
+            submitScore(progress.correct);
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${apiBase}/leaderboard`);
+                const data = await response.json();
+                const leaderboardList = document.getElementById('leaderboardList');
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Could not load leaderboard');
+                }
+
+                if (!data.leaderboard.length) {
+                    leaderboardList.textContent = 'No scores yet.';
+                    return;
+                }
+
+                leaderboardList.innerHTML = data.leaderboard.map((entry, index) => `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">${index + 1}.</div>
+                        <div>
+                            <div class="leaderboard-name">${entry.username}</div>
+                            <div class="leaderboard-meta">
+                                Best Correct: ${entry.score}
+                            </div>
+                            <div class="leaderboard-meta">Best Time: ${entry.time}s | Total Tries: ${entry.games}</div>
+                        </div>
+                        <div class="leaderboard-score">${entry.score}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('leaderboardList').textContent = 'Could not load leaderboard.';
+            }
         }
 
         // Initialize on load
